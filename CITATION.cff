@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this code, please cite the accompanying manuscript and this archived version."
 title: "KaRIn_coastal_impact_on_L4: code for the validation of SWOT KaRIn Level-4 sea level products against European tide gauges"
 type: software
-version: "1.0.0"
+version: "1.0.1"
 license: MIT
 repository-code: "https://github.com/diegovegagimenez/KaRIn_coastal_impact_on_L4"
 keywords:
