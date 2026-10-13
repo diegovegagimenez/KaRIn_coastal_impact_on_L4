@@ -1,0 +1,19 @@
+# data and outputs are never committed
+data/
+results/
+figures/*
+!figures/.gitkeep
+*.nc
+*.pkl
+*.npz
+*.csv
+*.json
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+# credentials
+*.netrc
+.env
+logInfo
+*credentials*

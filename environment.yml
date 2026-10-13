@@ -1,0 +1,20 @@
+name: karin-l4
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - scipy
+  - xarray
+  - netcdf4
+  - matplotlib
+  - cartopy
+  - geopandas
+  - shapely
+  - pyproj
+  - statsmodels
+  - tqdm
+  - pip
+  - pip:
+      - utide

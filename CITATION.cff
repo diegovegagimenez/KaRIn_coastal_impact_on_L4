@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the accompanying manuscript."
+title: "karin-l4-coastal-validation: code for the validation of SWOT KaRIn Level-4 sea level products against European tide gauges"
+type: software
+license: MIT
+authors:
+  - family-names: "Vega-Giménez"
+    given-names: "D."
+  - family-names: "Ballarotta"
+    given-names: "M."
+  - family-names: "Amores"
+    given-names: "A."
+  - family-names: "Pascual"
+    given-names: "A."
