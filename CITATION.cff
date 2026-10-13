@@ -1,14 +1,27 @@
 cff-version: 1.2.0
-message: "If you use this code, please cite the accompanying manuscript."
-title: "karin-l4-coastal-validation: code for the validation of SWOT KaRIn Level-4 sea level products against European tide gauges"
+message: "If you use this code, please cite the accompanying manuscript and this archived version."
+title: "KaRIn_coastal_impact_on_L4: code for the validation of SWOT KaRIn Level-4 sea level products against European tide gauges"
 type: software
+version: "1.0.0"
 license: MIT
+repository-code: "https://github.com/diegovegagimenez/KaRIn_coastal_impact_on_L4"
+keywords:
+  - SWOT
+  - KaRIn
+  - satellite altimetry
+  - sea level
+  - tide gauges
+  - Level-4
 authors:
-  - family-names: "Vega-Giménez"
-    given-names: "D."
+  - family-names: "Vega-Gimenez"
+    given-names: "Diego"
+    affiliation: "Mediterranean Institute for Advanced Studies (IMEDEA), CSIC-UIB, Esporles, Spain"
   - family-names: "Ballarotta"
-    given-names: "M."
+    given-names: "Maxime"
+    affiliation: "Collecte Localisation Satellites (CLS), Ramonville-Saint-Agne, France"
   - family-names: "Amores"
-    given-names: "A."
+    given-names: "Angel"
+    affiliation: "Mediterranean Institute for Advanced Studies (IMEDEA), CSIC-UIB, Esporles, Spain"
   - family-names: "Pascual"
-    given-names: "A."
+    given-names: "Ananda"
+    affiliation: "Mediterranean Institute for Advanced Studies (IMEDEA), CSIC-UIB, Esporles, Spain"

@@ -1,4 +1,4 @@
-# karin-l4-coastal-validation
+# KaRIn_coastal_impact_on_L4
 
 Code accompanying the manuscript on the impact of SWOT KaRIn observations on
 delayed-time Level-4 (L4) sea level products along European coasts, assessed
