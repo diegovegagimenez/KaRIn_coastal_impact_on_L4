@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Indicador de regimen mareal por estacion: desviacion estandar de la serie
-horaria del mareografo tras restar la media movil centrada de 25 h (banda
-diurna/semidiurna, dominada por la marea), en CalVal. tidal_range ~ 2*sqrt(2)*std.
-Salida: tidal_regime_proxy.csv"""
+"""Tidal regime indicator per station: standard deviation of the hourly tide
+gauge series after subtracting its centred 25 h running mean (diurnal and
+semidiurnal band), CalVal.
+Output: tidal_regime_proxy.csv"""
 import os
 from pathlib import Path
 import numpy as np, pandas as pd

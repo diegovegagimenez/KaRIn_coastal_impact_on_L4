@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
-"""figD_timeseries_example (v2): series temporales filtradas (LOESS 15 d) de
-mareografo, MY y MIOST-K en tres estaciones near-swath de la zona de transicion
-mar del Norte-Baltico, R = 50 km, fase CalVal. Reproduce el estilo de la figura
-original (cuyo script no se conservo) con:
-  - etiquetas regionales actualizadas ('Transition zone' en lugar de
-    'North West Shelf' / 'Baltic Sea'),
-  - el numero de celdas N_pix de cada disco de extraccion en el titulo,
-  - 'near-swath' en lugar de 'near-SWOT'.
-Entradas: series diarias guardadas en time_series_optimal/CalVal (R = 50 km) y
-per_station_radius_with_pixels_v2.csv (PI_RMSD y N_pix por estacion).
-Salida: figures/figD_timeseries_example_v2.{pdf,png}
-"""
+"""Fig. 5: low-pass filtered (LOESS 15 d) tide gauge, MY and MIOST-K series at
+three near-swath stations of the transition zone, R = 50 km, CalVal.
+Panel titles give PI_RMSD and the number of grid cells N_pix.
+
+Input : daily series in time_series_optimal/CalVal (R = 50 km) and
+per_station_radius_with_pixels_v2.csv.
+Output: figures/figD_timeseries_example_v2.{pdf,png}"""
 import os
 from pathlib import Path
 

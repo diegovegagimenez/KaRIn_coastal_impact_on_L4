@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Mejora de MIOST-K sobre MY por regimen mareal, R = 50 km.
+"""Improvement of MIOST-K over MY by tidal regime, R = 50 km.
 
-Clases por sigma_tide (std de la serie horaria del mareografo menos su media
-movil de 25 h, CalVal; ver tidal_regime_proxy.py): micromareal < 5 cm, debil
-5-20 cm, mesomareal 20-60 cm, macromareal > 60 cm.
-Entradas: tidal_regime_proxy.csv, station_regions_v2.csv,
-per_station_radius_with_pixels_v2.csv.
-"""
+Classes by sigma_tide (standard deviation of the hourly tide gauge series minus
+its 25 h running mean, CalVal; see tidal_regime_proxy.py): microtidal < 5 cm,
+weak 5-20 cm, meso 20-60 cm, macrotidal > 60 cm.
+Input: tidal_regime_proxy.csv, station_regions_v2.csv, per-station metrics."""
 import os
 from pathlib import Path
 

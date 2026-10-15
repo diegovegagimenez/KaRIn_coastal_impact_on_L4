@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-"""fig07b_rmsd_combined_absolute_and_diff_maps_extended: mismos datos que la
-version actual (MY vs MIOST-K, R=50km, ventana extendida,
-results_periodo_extendido/optimal_radius_fixed50, v7), pero con la estetica
-EXACTA de results/advanced_analysis/plot_combined_rmsd_maps.py:
-  - GridSpec de 5 columnas (col fantasma casi-0 entre MY y MIOST-K, para
-    pegarlos visualmente; hueco ancho antes de Delta).
-  - Barra de color flotante (inset_axes) solo tras MIOST-K y tras Delta.
-  - Titulos SIN negrita.
-  - Caja de estadisticas en la esquina superior izquierda.
-  - cmap RdYlGn_r (absolutos) / seismic_r (delta), FS=16.
-  - Sin sufijo de fechas en el titulo de fase (solo "CalVal"/"Science").
-"""
+"""Fig. 2: RMSD maps of MY, MIOST-K and their difference (CalVal and Science),
+R = 50 km, results_periodo_extendido/optimal_radius_fixed50.
+
+Layout: 5-column GridSpec, floating colour bars after MIOST-K and after the
+difference, statistics box in the upper-left corner, phase names only in the
+titles."""
 import os
 import numpy as np
 import pandas as pd

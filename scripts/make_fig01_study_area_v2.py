@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Fig. 1 (v3): area de estudio y clasificacion regional v2 (7 regiones, incluida
-la 'Transition zone' = estaciones al sur de 56.44N en IHO Kattegat [Sound y Belts] o
-en IHO Baltic Sea al oeste de 13E). Poligonos IHO coloreados por region y estaciones."""
+"""Fig. 1: study area and regional classification (seven regions, including the
+transition zone: stations south of 56.44N in the IHO Kattegat polygon [Sound and
+Belts] or in the IHO Baltic Sea polygon west of 13E). IHO polygons coloured by
+region, with the tide gauge stations."""
 import os
 from pathlib import Path
 import pandas as pd, geopandas as gpd
@@ -43,7 +44,7 @@ n = st.region_v2.value_counts()
 h = [Patch(facecolor=COL[r], label=f"{r} ({n.get(r, 0)})") for r in COL]
 h.append(Line2D([], [], marker="o", color="k", ls="", ms=3, label="Tide gauge stations"))
 ax.legend(handles=h, loc="upper left", fontsize=8, framealpha=0.95)
-# inset de la zona de transicion
+# transition zone inset
 axi = fig.add_axes([0.625, 0.395, 0.225, 0.20], projection=ccrs.Mercator())
 axi.set_extent([8.8, 14.2, 53.6, 57.2], crs=proj)
 for reg, gg in g.groupby("region"):

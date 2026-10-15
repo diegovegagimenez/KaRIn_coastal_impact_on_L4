@@ -36,7 +36,7 @@ rows = []
 for r in RADII:
     d = D[D.radius == r]
     a, b = d[d.near].pi.values, d[~d.near].pi.values
-    # CI de la diferencia de medianas (remuestreo independiente de cada grupo)
+    # CI of the difference of medians (independent resampling of each group)
     ia = rng.integers(0, len(a), (NB, len(a)))
     ib = rng.integers(0, len(b), (NB, len(b)))
     diff = np.median(a[ia], axis=1) - np.median(b[ib], axis=1)

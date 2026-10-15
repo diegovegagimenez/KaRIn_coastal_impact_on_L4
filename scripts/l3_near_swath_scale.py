@@ -1,53 +1,27 @@
 #!/usr/bin/env python3
-"""L3 SWOT (KaRIn) vs L4 MIOST-K vs Tide Gauges, CalVal only, near-swath stations,
+"""L3 SWOT KaRIn vs MIOST-K vs MY vs tide gauges, CalVal, near-swath stations,
 radius sweep 10-100 km.
 
-Pregunta: durante CalVal, para las estaciones "near" del swath (<=2 km de un
-track CalVal, panel fijo 10-100 km ya usado en el articulo -> n=56, ver
-nearfar_scale_stats.py / Tabla 9), es el propio L3 (nube de puntos SWOT KaRIn)
-mejor que el L4 experimental (MIOST-K, que asimila ese mismo L3) frente al
-mareografo?
+Builds the caches (tide gauge + DAC, MIOST-K, MY, L3) used by
+l3_near_swath_scale_qc.py and l3_instantaneous.py. The L3 series of the paper
+come from l3_near_swath_scale_qc.py (default product, quality_flag == 0).
 
-Metodologia -- comparable con las Tablas 2-9 del articulo. Version corregida:
-la primera version de este script usaba SLA_TG = SLEV - media (sin detidado
-ni DAC), y reutilizaba TS_data_*.csv del pipeline principal para TG/L4 -- pero
-esos ficheros de serie temporal SOLO se generaron y guardaron en disco para
-R=50 km (el resto de radios solo tienen el CSV resumen por estacion, sin la
-serie diaria). Esta version ya NO depende de esos TS_data: reconstruye TG y
-L4 exactamente con las mismas funciones y parametros que usa
-`P1_altimetry_tidegauge_processing.py` para producir las Tablas 2-9, para
-cualquier radio:
-  - TG: `P1_altimetry_tidegauge_processing.process_tg_detided` (detidado
-    armonico UTide sobre el registro completo del mareografo) menos DAC
-    (`P1_altimetry_tidegauge_processing.extract_dac_daily`, radio fijo 50 km,
-    igual que el pipeline -- el DAC es suave y no se barre con el radio).
-  - L4 (MIOST-K): mediana espacial de `sla` dentro de R km sobre la malla
-    nativa MIOST (0.125°), extraida directamente de los ficheros MIOST L4
-    locales. Es la misma operacion que
-    `P1_altimetry_tidegauge_processing.extract_miost_multiradius`: con
-    `common_grid="coarsest"` (el valor por defecto y el usado para las
-    Tablas 2-9) la malla comun ES la malla nativa de MIOST, por lo que el
-    regrid es la identidad y el calculo se reduce a una mediana por radio,
-    igual que aqui.
-  - L3: mediana espacial de `ssha_filtered` dentro de R km, por pasada (los 4
-    pases CalVal 1/3/14/16), extraido directamente de los ficheros L3 locales.
-  - Filtro conjunto 3-sigma + recentrado + suavizado LOESS de 15 dias
-    (mismos `SIGMA_THRESHOLD=3.0` y `LOESS_WINDOW=15` que
-    `P1_altimetry_tidegauge_processing.py`), aplicado por estacion y por radio
-    sobre el merge {TG_detided_mdac, L3, MIOST-K} de fechas comunes (el join
-    con L3 puede recortar el conjunto de dias respecto al usado en las Tablas
-    2-9 para ese radio, porque L3 no cubre todos los dias a radios pequenos).
-  - RMSD y correlacion respecto al TG, PI = 100*(RMSD_L4-RMSD_L3)/RMSD_L4
-    (positivo = L3 mejor que L4).
+- Tide gauge: P1.process_tg_detided (UTide) minus the DAC (P1.extract_dac_daily,
+  fixed radius 50 km).
+- MIOST-K: spatial median of `sla` within R km on the native 0.125 deg grid.
+- MY: conservative regrid to the 0.125 deg grid, then spatial median within R.
+- L3: spatial median of the L3 SSH within R km, per pass (CalVal passes
+  1, 3, 14, 16).
+- Joint 3-sigma filter, re-centring and LOESS (15 d) per station and radius on
+  the merge of common dates.
+- RMSD and correlation with respect to the tide gauge;
+  PI = 100 * (RMSD_L4 - RMSD_L3) / RMSD_L4 (positive = L3 better than L4).
 
-Salidas en results/l3_near_swath_scale/:
-  - per_station_radius.csv   (56 estaciones x 10 radios)
-  - summary_by_radius.csv    (agregado: mediana/media/%mejor/test por radio)
-  - l3_cache.pkl              (cache de la extraccion L3 cruda)
-  - tg_dac_cache.pkl          (cache de TG detidado + DAC, no depende del radio)
+Output (results/l3_near_swath_scale/):
+  per_station_radius.csv, summary_by_radius.csv, l3_cache.pkl, tg_dac_cache.pkl
 
-Ejecutar:
-    conda run -n swot_env python l3_near_swath_scale.py
+Usage:
+    python l3_near_swath_scale.py
 """
 from __future__ import annotations
 
@@ -76,7 +50,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 sys.path.insert(0, str(PIPE_DIR))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pipeline"))
-import P1_altimetry_tidegauge_processing as P1  # noqa: E402  (mismo modulo que produce Tablas 2-9)
+import P1_altimetry_tidegauge_processing as P1  # noqa: E402
 
 PATHS = {
     "tg_dir": ART_DIR / "data/processed_NRT/tide_gauges_nrt",
@@ -85,35 +59,25 @@ PATHS = {
     "dac_dir": ART_DIR / "data/raw/dac_l4",
     "duacs_my": ART_DIR / "data/raw/duacs_l4_my/duacs_sla_eur_MY_0625deg_swot_period.nc",
     "scale_dir": PIPE_DIR / "results_periodo_extendido",
-    "prox_csv": PIPE_DIR / "results_P2_periodo_comun_50km" / "advanced_analysis_v2_fixed"
-                / "miost_multivariate__vs__miost_multivariate_karin" / "swot_proximity_by_station.csv",
+    "prox_csv": PIPE_DIR / "swot_proximity_by_station.csv",
 }
 
 RADII = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-RMSD_CAP = 50.0           # cm, mismo criterio que el resto del articulo
-NEAR_KM = 2.0              # umbral near-swath ya establecido en el articulo
+RMSD_CAP = 50.0           # cm
+NEAR_KM = 2.0              # near-swath threshold
 CALVAL_START = pd.Timestamp("2023-03-28")
 CALVAL_END = pd.Timestamp("2023-07-05")
 
 LOESS_WINDOW_DAYS = 15.0
 SIGMA_THRESHOLD = 3.0
-DAC_RADIUS_KM = P1.DAC_RADIUS_DEFAULT     # 50 km, fijo (igual que Tablas 2-9)
-BOX_MARGIN = 1.25                          # mismo margen por defecto del pipeline
+DAC_RADIUS_KM = P1.DAC_RADIUS_DEFAULT     # 50 km, fixed
+BOX_MARGIN = 1.25                          # same default margin as the pipeline
 
-# --- quality_flag de SWOT L3 ---------------------------------------------
-# `ssha_filtered`/`ssha_unfiltered` llevan el editado por quality_flag YA
-# incorporado (NaN donde el flag no es 0), lo que descarta de forma agresiva
-# datos cerca de costa (bad_quality_coast=10, ocean_unsure=18) y en zonas de
-# alta variabilidad (soft/local_outliers=30/5) -- comprobado: cerca de la
-# estacion BO_TS_TG_Bagenkop (estrecho danes) el flag 30 por si solo
-# descarta mas puntos que el flag 0 "good". Para poder usar datos cerca de
-# costa se usa `ssha_unedited` (calibrado, SIN editar) y se aplica una
-# mascara propia que solo excluye lo que no es dato oceanico real:
-#   101 = not_on_sea (tierra)      102 = no_data (sin dato)
-#   100 = bad_swath_extremities (borde de swath, casi sin dato real tampoco)
-# Todo lo demas (incl. bad_quality_coast=10, ocean_unsure=18,
-# soft/local_outliers=30/5, eclipse=3, ice=19/20, rain=25, extremes=50,
-# mission_event=70) se CONSERVA.
+# --- SWOT L3 quality_flag ---------------------------------------------------
+# This script uses `ssha_unedited` (calibrated, not edited) and masks only the
+# flags that are not ocean data (100 = bad_swath_extremities, 101 = not_on_sea,
+# 102 = no_data). The paper uses l3_near_swath_scale_qc.py (ssha_filtered,
+# quality_flag == 0).
 QF_MEANING = {
     0: "good", 3: "eclipse", 5: "local_outliers", 10: "bad_quality_coast",
     18: "ocean_unsure", 19: "ice_unsure", 20: "ice", 25: "rain",
@@ -131,8 +95,7 @@ def haversine(lon1, lat1, lon2, lat2):
 
 
 # =============================================================================
-# 1. PANEL FIJO DE ESTACIONES NEAR-SWATH (CalVal, 10-100 km) -- reproduce
-#    exactamente el mismo filtro que scripts/nearfar_scale_stats.py
+# 1. FIXED PANEL OF NEAR-SWATH STATIONS (CalVal, 10-100 km)
 # =============================================================================
 
 def build_near_panel() -> pd.DataFrame:
@@ -152,22 +115,21 @@ def build_near_panel() -> pd.DataFrame:
     coords = pd.read_csv(PATHS["scale_dir"] / "optimal_radius_fixed50" / "overall_metrics_LOESS_PARALLEL_CalVal_v7.csv")
     coords = coords[coords.station.isin(near)][["station", "latitude", "longitude"]].drop_duplicates("station")
     coords = coords.reset_index(drop=True)
-    print(f"[PANEL] near-swath CalVal, panel fijo 10-100km: n={len(coords)} "
-          f"(de {len(panel)} en panel fijo total, umbral {NEAR_KM} km)")
+    print(f"[PANEL] near-swath CalVal, fixed panel 10-100 km: n={len(coords)} "
+          f"(of {len(panel)} in the fixed panel, threshold {NEAR_KM} km)")
     return coords
 
 
 # =============================================================================
-# 2. EXTRACCION L3 (un solo paso por archivo, todos los radios y estaciones)
+# 2. L3 EXTRACTION (one pass per file, all radii and stations)
 # =============================================================================
 
 def extract_l3(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
     l3_dir = PATHS["l3_dir"]
     files = sorted(l3_dir.glob("SWOT_L3_LR_SSH_Expert_*.nc"))
-    print(f"[L3] {len(files)} ficheros locales a procesar (1 pasada por estacion+radio, "
-          f"pases CalVal 1/3/14/16)")
-    print(f"  variable: ssha_unedited (SIN editado por quality_flag) + mascara manual "
-          f"excluyendo solo {sorted(QF_EXCLUDE)} ({', '.join(QF_MEANING[f] for f in sorted(QF_EXCLUDE))})")
+    print(f"[L3] {len(files)} local files to process (CalVal passes 1/3/14/16)")
+    print(f"  variable: ssha_unedited + mask excluding only "
+          f"{sorted(QF_EXCLUDE)} ({', '.join(QF_MEANING[f] for f in sorted(QF_EXCLUDE))})")
 
     rows: dict[str, list[dict]] = {sid: [] for sid in stations.station}
     max_r = max(RADII)
@@ -185,10 +147,8 @@ def extract_l3(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
             print(f"  [WARN] {nc_path.name}: {e}")
             continue
 
-        # solo se excluyen tierra (not_on_sea) y no_data/bordes de swath sin dato
-        # real; TODOS los flags "de calidad" relacionados con la costa
-        # (bad_quality_coast, ocean_unsure, soft/local_outliers, etc.) se
-        # mantienen, para poder usar datos cerca de costa.
+        # only land (not_on_sea) and no_data/swath edges are excluded; the other
+        # flags are kept
         ssha = np.where(np.isin(qflag, list(QF_EXCLUDE)), np.nan, ssha)
 
         for sid, lat_tg, lon_tg in stations.itertuples(index=False):
@@ -222,7 +182,7 @@ def extract_l3(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
                 rows[sid].append(row)
 
         if (i + 1) % 50 == 0:
-            print(f"  [L3] {i + 1}/{len(files)} ficheros procesados")
+            print(f"  [L3] {i + 1}/{len(files)} files processed")
 
     out = {}
     for sid, recs in rows.items():
@@ -231,22 +191,20 @@ def extract_l3(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
             continue
         df = pd.DataFrame(recs).sort_values("time").reset_index(drop=True)
         df["time"] = pd.to_datetime(df["time"]).dt.normalize()
-        # si hay >1 pasada el mismo dia, mediana
+        # if there is more than one pass on the same day, take the median
         df = df.groupby("time", as_index=False).median(numeric_only=True)
         out[sid] = df
     return out
 
 
 # =============================================================================
-# 3a. TG detidado (UTide, registro completo) + DAC (radio fijo 50 km) --
-#     mismas funciones que usa P1_altimetry_tidegauge_processing.py para las
-#     Tablas 2-9. Independiente del radio de extraccion altimetrica.
+# 3a. Detided tide gauge (UTide, full record) + DAC (fixed radius 50 km),
+#     with the P1 functions. Independent of the altimetry extraction radius.
 # =============================================================================
 
 class _FilteredDacDir:
-    """Envoltorio de PATHS['dac_dir'] cuyo .glob() solo devuelve los ficheros
-    DAC (6-horarios) dentro de la ventana CalVal, para no escanear ~4200
-    ficheros de todo el registro cuando solo hace falta ~1/10 de ellos."""
+    """Wrapper of PATHS['dac_dir'] whose .glob() only returns the 6-hourly DAC
+    files within the CalVal window."""
 
     def __init__(self, real_dir: Path, start: pd.Timestamp, end: pd.Timestamp):
         self.real_dir = real_dir
@@ -267,21 +225,20 @@ class _FilteredDacDir:
 
 
 def build_tg_dac(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    """Devuelve {station: DataFrame(time, SLEV_detided_mdac)} SIN centrar
-    (el centrado se hace en p4_filter_smooth, tras intersectar con L3/L4,
-    igual que hace metrics_station_radius en el pipeline principal)."""
+    """Return {station: DataFrame(time, SLEV_detided_mdac)} not re-centred
+    (re-centring is done in p4_filter_smooth, after intersecting with L3/L4)."""
     tg_coords = {}
     detided = {}
     for sid, lat_tg, lon_tg in stations.itertuples(index=False):
         pkl_path = PATHS["tg_dir"] / f"{sid}.pkl"
         res, info = P1.process_tg_detided(pkl_path)
         if res is None:
-            print(f"  [WARN] TG detide fallo para {sid}: {info}")
+            print(f"  [WARN] TG detiding failed for {sid}: {info}")
             continue
         detided[sid] = res
         tg_coords[sid] = (lat_tg, lon_tg)
 
-    print(f"[TG] {len(detided)}/{len(stations)} estaciones detidadas (UTide) correctamente")
+    print(f"[TG] {len(detided)}/{len(stations)} stations detided (UTide)")
 
     dac_dir = _FilteredDacDir(PATHS["dac_dir"], CALVAL_START, CALVAL_END)
     dac = P1.extract_dac_daily(dac_dir, tg_coords, DAC_RADIUS_KM, BOX_MARGIN)
@@ -304,9 +261,8 @@ def build_tg_dac(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
 
 
 # =============================================================================
-# 3b. EXTRACCION L4 MIOST-K (mediana en R km, malla nativa 0.125° -- identica
-#     a extract_miost_multiradius con common_grid='coarsest', el valor usado
-#     para las Tablas 2-9)
+# 3b. MIOST-K L4 EXTRACTION (median within R km, native 0.125 deg grid;
+#     same as extract_miost_multiradius with common_grid='coarsest')
 # =============================================================================
 
 def extract_l4(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -319,11 +275,11 @@ def extract_l4(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
 
     files = [(f, file_date(f)) for f in all_files]
     files = [(f, d) for f, d in files if d is not None and CALVAL_START <= d <= CALVAL_END]
-    print(f"[L4] {len(files)} ficheros MIOST-K en ventana CalVal "
+    print(f"[L4] {len(files)} MIOST-K files in the CalVal window "
           f"({CALVAL_START.date()} -> {CALVAL_END.date()})")
 
     if not files:
-        raise RuntimeError("No se encontraron ficheros MIOST L4 en la ventana CalVal")
+        raise RuntimeError("No MIOST L4 files found in the CalVal window")
 
     ds_ref = xr.open_dataset(files[0][0])
     lat1d = ds_ref["latitude"].values
@@ -373,7 +329,7 @@ def extract_l4(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
                 rows[sid].append(row)
 
         if (i + 1) % 20 == 0:
-            print(f"  [L4] {i + 1}/{len(files)} ficheros procesados")
+            print(f"  [L4] {i + 1}/{len(files)} files processed")
 
     out = {}
     for sid, recs in rows.items():
@@ -387,12 +343,8 @@ def extract_l4(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
 
 
 # =============================================================================
-# 3c. EXTRACCION DUACS MY (nadir puro, SIN KaRIn) -- REUTILIZA
-#     P1_altimetry_tidegauge_processing.extract_single_nc_multiradius, la
-#     misma funcion que produce la columna sla_my de las Tablas 2-9: regrid
-#     conservativo (area-weighted) de la malla nativa DUACS (0.0625°) a la
-#     malla comun MIOST (0.125°, common_grid="coarsest") y despues mediana
-#     por radio sobre esa malla comun.
+# 3c. MY L4 EXTRACTION (nadir only): conservative regrid of the DUACS native grid
+#     (0.0625 deg) to the MIOST grid (0.125 deg), then spatial median per radius.
 # =============================================================================
 
 def extract_duacs_my(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -405,7 +357,7 @@ def extract_duacs_my(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
     tg_coords = {sid: (lat, lon) for sid, lat, lon in stations.itertuples(index=False)}
 
     print(f"[DUACS-MY] {PATHS['duacs_my'].name}: extract_single_nc_multiradius "
-          f"(regrid conservativo -> malla MIOST, igual que Tablas 2-9) ...")
+          f"(conservative regrid -> MIOST grid) ...")
     out_raw, _ncells = P1.extract_single_nc_multiradius(
         PATHS["duacs_my"], "sla_my", tg_coords, RADII, BOX_MARGIN,
         tgt_lat=tgt_lat, tgt_lon=tgt_lon, method="conservative")
@@ -419,20 +371,16 @@ def extract_duacs_my(stations: pd.DataFrame) -> dict[str, pd.DataFrame]:
         d = d.rename(columns=rename)
         keep_cols = ["time"] + [c for c in rename.values() if c in d.columns]
         out[sid] = d[keep_cols]
-    print(f"  -> {len(out)} estaciones con datos DUACS-MY")
+    print(f"  -> {len(out)} stations with DUACS-MY data")
     return out
 
 
 # =============================================================================
-# 5. P4: filtro 3-sigma conjunto (+ recentrado) [+ LOESS 15 dias, OPCIONAL]
+# 5. P4: joint 3-sigma filter (+ re-centring) [+ optional 15 d LOESS]
 #
-# `smooth=True`  -> metodologia identica a las Tablas 2-9 (3-sigma + LOESS).
-# `smooth=False` -> "sin filtrado temporal": se mantiene el filtro 3-sigma
-#   conjunto (es un filtro de amplitud/outliers, no temporal -- sin el, un
-#   solo dia con un outlier de posicionamiento/nube dispara RMSD espurios que
-#   no reflejan la señal oceanica) y el recentrado, pero NO se aplica el
-#   suavizado LOESS de 15 dias: se comparan los valores DIARIOS crudos de TG,
-#   L3 y MIOST-K entre si, sin paso alguno de baja frecuencia.
+# `smooth=True`  -> 3-sigma + LOESS (as in the paper).
+# `smooth=False` -> no temporal filtering: 3-sigma filter and re-centring only;
+#   raw daily values of TG, L3 and MIOST-K are compared.
 # =============================================================================
 
 def p4_filter_smooth(df: pd.DataFrame, cols: list[str], smooth: bool = True) -> pd.DataFrame:
@@ -502,13 +450,9 @@ def compute_metrics(stations: pd.DataFrame, l3: dict, tg_dac: dict, l4: dict,
             corr_l3 = float(np.corrcoef(tg, l3v)[0, 1])
             corr_l4 = float(np.corrcoef(tg, l4v)[0, 1])
 
-            # sanidad: mismo tope que build_near_panel()/resto del articulo.
-            # Con los flags de costa desactivados, unas pocas estaciones de
-            # alta latitud (hielo en el Golfo de Botnia: Furuogrund,
-            # Stromoren) muestran SSH espurio de decenas de metros -- el
-            # filtro 3-sigma no lo detecta porque esta calculado sobre la
-            # propia serie ya contaminada. Se descartan esas filas en vez de
-            # dejarlas distorsionar la media/PI.
+            # RMSD cap as in the rest of the paper: a few high-latitude stations (ice in
+            # the Gulf of Bothnia) show spurious SSH of tens of metres that the
+            # 3-sigma filter does not detect; these rows are discarded.
             if rmsd_l3 > RMSD_CAP or rmsd_l4 > RMSD_CAP:
                 continue
 
@@ -525,9 +469,9 @@ def compute_metrics(stations: pd.DataFrame, l3: dict, tg_dac: dict, l4: dict,
 
 def compute_metrics_3products(stations: pd.DataFrame, l3: dict, tg_dac: dict, l4: dict,
                               duacs: dict, smooth: bool = True) -> pd.DataFrame:
-    """Igual que compute_metrics, pero añadiendo DUACS-MY (nadir puro, sin
-    KaRIn) como tercer producto. El filtro 3-sigma conjunto y el LOESS se
-    aplican sobre las CUATRO series {TG, L3, MIOST-K, DUACS-MY} a la vez."""
+    """As compute_metrics, adding MY (nadir only) as a third product. The joint
+    3-sigma filter and the LOESS are applied to the four series {TG, L3,
+    MIOST-K, MY} at once."""
     records = []
     for sid, lat_tg, lon_tg in stations.itertuples(index=False):
         df_l3 = l3.get(sid, pd.DataFrame())
@@ -599,7 +543,7 @@ def summarize_3products(df: pd.DataFrame) -> pd.DataFrame:
             median_corr_duacs=d.corr_duacs.median(),
             median_pi_l4_vs_duacs=d.pi_l4_vs_duacs.median(),   # valor anadido KaRIn (L4 vs DUACS)
             median_pi_l3_vs_duacs=d.pi_l3_vs_duacs.median(),   # L3 crudo vs DUACS
-            median_pi_l3_vs_l4=d.pi_l3_vs_l4.median(),         # L3 vs L4 (ya reportado antes)
+            median_pi_l3_vs_l4=d.pi_l3_vs_l4.median(),         # L3 vs L4
             pct_l4_better_than_duacs=100.0 * (d.rmsd_l4 < d.rmsd_duacs).mean(),
             pct_l3_better_than_duacs=100.0 * (d.rmsd_l3 < d.rmsd_duacs).mean(),
         ))
@@ -637,7 +581,7 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
 def _load_or_build(cache_name: str, builder, *args):
     cache_path = OUT_DIR / cache_name
     if cache_path.exists():
-        print(f"  -> usando cache existente ({cache_path})")
+        print(f"  -> using existing cache ({cache_path})")
         with open(cache_path, "rb") as fh:
             return pickle.load(fh)
     result = builder(*args)
@@ -651,58 +595,58 @@ def main():
     stations = build_near_panel()
     stations.to_csv(OUT_DIR / "near_panel_stations.csv", index=False)
 
-    print("\n[STEP] Extraccion L3 (esto puede tardar) ...")
+    print("\n[STEP] L3 extraction (this may take a while) ...")
     l3 = _load_or_build("l3_cache.pkl", extract_l3, stations)
 
-    print("\n[STEP] TG detidado (UTide) + DAC (radio fijo 50 km) ...")
+    print("\n[STEP] Detided TG (UTide) + DAC (fixed radius 50 km) ...")
     tg_dac = _load_or_build("tg_dac_cache.pkl", build_tg_dac, stations)
 
-    print("\n[STEP] Extraccion L4 MIOST-K (mediana en R km, malla nativa) ...")
+    print("\n[STEP] MIOST-K L4 extraction (median within R km, native grid) ...")
     l4 = _load_or_build("l4_cache.pkl", extract_l4, stations)
 
     pd.set_option("display.width", 200)
 
-    print("\n[STEP] Merge + filtro P4 (3-sigma) + LOESS 15d + metricas por estacion/radio ...")
+    print("\n[STEP] Merge + P4 filter (3-sigma) + LOESS 15 d + metrics per station/radius ...")
     per_sr = compute_metrics(stations, l3, tg_dac, l4, smooth=True)
     per_sr.to_csv(OUT_DIR / "per_station_radius.csv", index=False, float_format="%.5f")
-    print(f"  -> {len(per_sr)} filas (estacion x radio) guardadas")
+    print(f"  -> {len(per_sr)} rows (station x radius) saved")
 
     summary = summarize(per_sr)
     summary.to_csv(OUT_DIR / "summary_by_radius.csv", index=False, float_format="%.4f")
     print("\n" + "=" * 100)
-    print("RESUMEN [LOESS 15d, comparable a Tablas 2-9]: L3 vs L4 vs TG -- CalVal, near-swath")
+    print("SUMMARY [LOESS 15 d]: L3 vs L4 vs TG -- CalVal, near-swath")
     print("=" * 100)
     print(summary.to_string(index=False))
 
-    print("\n[STEP] Version SIN filtrado temporal (solo 3-sigma + recentrado, sin LOESS) ...")
+    print("\n[STEP] Version without temporal filtering (3-sigma + re-centring only) ...")
     per_sr_raw = compute_metrics(stations, l3, tg_dac, l4, smooth=False)
     per_sr_raw.to_csv(OUT_DIR / "per_station_radius_raw.csv", index=False, float_format="%.5f")
-    print(f"  -> {len(per_sr_raw)} filas (estacion x radio) guardadas")
+    print(f"  -> {len(per_sr_raw)} rows (station x radius) saved")
 
     summary_raw = summarize(per_sr_raw)
     summary_raw.to_csv(OUT_DIR / "summary_by_radius_raw.csv", index=False, float_format="%.4f")
     print("\n" + "=" * 100)
-    print("RESUMEN [SIN LOESS, valores diarios crudos]: L3 vs L4 vs TG -- CalVal, near-swath")
+    print("SUMMARY [no LOESS, raw daily values]: L3 vs L4 vs TG, CalVal, near-swath")
     print("=" * 100)
     print(summary_raw.to_string(index=False))
 
-    print("\n[STEP] Extraccion DUACS-MY (nadir puro, sin KaRIn) ...")
+    print("\n[STEP] MY extraction (nadir only) ...")
     duacs = _load_or_build("duacs_cache.pkl", extract_duacs_my, stations)
 
     print("\n[STEP] 3 productos {L3, MIOST-K, DUACS-MY} + filtro P4 (3-sigma) + LOESS 15d ...")
     per_sr_3p = compute_metrics_3products(stations, l3, tg_dac, l4, duacs, smooth=True)
     per_sr_3p.to_csv(OUT_DIR / "per_station_radius_3products.csv", index=False, float_format="%.5f")
-    print(f"  -> {len(per_sr_3p)} filas (estacion x radio) guardadas")
+    print(f"  -> {len(per_sr_3p)} rows (station x radius) saved")
 
     summary_3p = summarize_3products(per_sr_3p)
     summary_3p.to_csv(OUT_DIR / "summary_by_radius_3products.csv", index=False, float_format="%.4f")
     print("\n" + "=" * 100)
-    print("RESUMEN [LOESS 15d, comparable a Tablas 2-9]: L3 vs MIOST-K vs DUACS-MY vs TG -- "
+    print("SUMMARY [LOESS 15 d]: L3 vs MIOST-K vs DUACS-MY vs TG -- "
           "CalVal, near-swath")
     print("=" * 100)
     print(summary_3p.to_string(index=False))
 
-    print(f"\n[DONE] Resultados en: {OUT_DIR}")
+    print(f"\n[DONE] Results in: {OUT_DIR}")
 
 
 if __name__ == "__main__":

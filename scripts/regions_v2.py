@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Regionalizacion v2: anade la 'Transition zone' (North Sea-Baltic transition):
-   estaciones al SUR de 56.44N que estan en
-   - el poligono IHO 'Kattegat' (que incluye el Sound y los Belts), o
-   - el poligono IHO 'Baltic Sea' al oeste de 13.0E (Kiel y Mecklenburg Bights,
-     es decir, al oeste del umbral de Darss).
-   Es decir: Belt Sea, sur del Sound y Baltico occidental (estrechos e islas).
-   El Kattegat al norte de 56.44N y el Skagerrak permanecen en North West Shelf.
-Salida: station_regions_v2.csv (station, iho, region_v1, region_v2)."""
+"""Regional classification: the transition zone between the North Sea and the
+Baltic Sea comprises stations south of 56.44N that lie in the IHO Kattegat
+polygon (including the Sound and the Belts) or in the IHO Baltic Sea polygon west
+of 13.0E (Kiel and Mecklenburg Bights). The Kattegat north of 56.44N and the
+Skagerrak remain in the North West Shelf."""
 import os
 from pathlib import Path
 import pandas as pd, geopandas as gpd

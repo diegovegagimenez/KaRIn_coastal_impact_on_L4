@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-"""figN: instantanea SWOT L3 KaRIn (pase 016, 2023-04-22, CalVal) superpuesta a
-(a) DUACS-MY (nadir-only) y (b) MIOST-K (nadir + KaRIn), Mediterraneo Occidental.
+"""Fig. 8: SWOT L3 KaRIn snapshot (pass 016, 2023-04-22, CalVal) over (a) MY
+(nadir only) and (b) MIOST-K (nadir + KaRIn), western Mediterranean.
 
-Igual que figM/figL pero:
-  - L3 = ssha_filtered (producto por defecto) y solo pixeles con quality_flag == 0 ("good"): se eliminan los
-    pixeles flaggeados cerca de costa (local/soft outliers 5/30,
-    bad_quality_coast 10, ocean_unsure 18) ademas de tierra/no-dato;
-  - ambos paneles comparten escala de color;
-  - se imprimen metricas L3-vs-L4 dentro del swath (L4 interpolado
-    bilinealmente a los pixeles L3 validos): RMS de la diferencia, correlacion
-    y numero de pixeles L3 usados.
-"""
+- L3 = ssha_filtered (default product), only pixels with quality_flag == 0
+  ("good"): pixels flagged near the coast (local/soft outliers 5/30,
+  bad_quality_coast 10, ocean_unsure 18) are removed, as well as land/no-data.
+- Both panels share the colour scale.
+- L3-vs-L4 metrics inside the swath are printed (L4 bilinearly interpolated to
+  the valid L3 pixels): RMS difference, correlation and number of L3 pixels."""
 import os
 from pathlib import Path
 
@@ -75,7 +72,7 @@ def l3_vs_l4(lon3, lat3, s3, grid):
     a = s3[inbox]
     ok = np.isfinite(g)
     a, g = a[ok], g[ok]
-    # se elimina la media de cada campo (offset de referencia) antes de comparar
+    # the mean of each field (reference offset) is removed before comparing
     d = (a - a.mean()) - (g - g.mean())
     return dict(n=int(ok.sum()), rms=float(np.sqrt(np.mean(d ** 2))),
                 r=float(np.corrcoef(a, g)[0, 1]), std_l3=float(a.std()), std_l4=float(g.std()))

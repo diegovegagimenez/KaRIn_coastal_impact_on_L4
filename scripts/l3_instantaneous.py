@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Comparacion INSTANTANEA L3 KaRIn vs mareografo (sin promedio diario ni LOESS),
-CalVal, estaciones near-swath del panel fijo.
+"""Instantaneous L3 KaRIn vs tide gauge comparison (no daily mean, no LOESS),
+CalVal, near-swath stations of the fixed panel.
 
-  - TG: serie horaria detidada (UTide, mismas funciones que el pipeline),
-    interpolada linealmente a la hora de cada pasada, menos la DAC del propio
-    L3 (variable `dac`, mediana de los pixeles validos del disco) en ese instante.
-  - L3: mediana de `ssha_filtered` con quality_flag == 0 dentro de R km, por pasada.
-  - L4 (MIOST-K, DUACS-MY): valor diario del dia de la pasada (caches existentes).
-  - Referencia "diaria": mismo conjunto de pasadas, pero contra la media diaria
-    del TG (TG detidado diario - DAC diaria; tg_dac_cache.pkl).
-  - Filtro 3-sigma conjunto y recentrado; RMSD y correlacion por estacion.
+- Tide gauge: hourly detided series (UTide), linearly interpolated to the pass
+  time, minus the DAC of the L3 product (median of the valid pixels in the disc).
+- L3: median of ssha_filtered with quality_flag == 0 within R km, per pass.
+- L4 (MIOST-K, MY): daily value of the pass day (cached series).
+- Daily reference: same passes, against the daily-mean tide gauge
+  (daily detided tide gauge - daily DAC; tg_dac_cache.pkl).
+- Joint 3-sigma filter and re-centring; RMSD and correlation per station.
 
-Salidas: results/l3_near_swath_scale/l3_instantaneous_{samples,per_station,summary}.csv
+Output: results/l3_near_swath_scale/l3_instantaneous_{samples,per_station,summary}.csv
 """
 import os
 import pickle
@@ -45,7 +44,15 @@ def xyz(lat, lon):
 
 
 def hourly_detided(sid):
-    """Igual que P1.process_tg_detided pero SIN el remuestreo diario final."""
+    """Instantaneous L3 KaRIn vs tide gauge comparison (no daily mean, no LOESS),
+CalVal, near-swath stations of the fixed panel.
+
+- Tide gauge: hourly detided series (UTide), linearly interpolated to the pass
+  time, minus the DAC of the L3 product (median of the valid pixels in the disc).
+- L3: median of ssha_filtered with quality_flag == 0 within R km, per pass.
+- L4 (MIOST-K, MY): daily value of the pass day (cached series).
+- Daily reference: same passes, against the daily-mean tide gauge.
+- Joint 3-sigma filter and re-centring; RMSD and correlation per station."""
     tg = pd.read_pickle(ART / "data/processed_NRT/tide_gauges_nrt" / f"{sid}.pkl").reset_index()
     if "TIME" in tg.columns:
         tg = tg.rename(columns={"TIME": "time_d"})
@@ -128,7 +135,7 @@ def main():
         if h is None or sid not in l4 or sid not in du or sid not in tgd:
             continue
         g = g.sort_values("time").copy()
-        # TG horario interpolado a la hora de la pasada (solo si hay dato a <=1 h a cada lado)
+        # hourly tide gauge interpolated to the pass time (only if data within 1 h on each side)
         tnum = h.index.values.astype("int64")
         x = g.time.values.astype("int64")
         j = np.searchsorted(tnum, x)

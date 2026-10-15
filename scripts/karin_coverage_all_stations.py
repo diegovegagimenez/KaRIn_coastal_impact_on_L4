@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-"""Cobertura real de KaRIn L3 (producto por defecto: ssha_filtered, quality_flag==0)
-alrededor de TODAS las estaciones validadas en CalVal.
+"""KaRIn L3 coverage (default product: ssha_filtered, quality_flag == 0) around
+all stations validated in CalVal.
 
-Para cada estacion y cada pasada CalVal (pases 1/3/14/16) cuenta:
-  - n_valid_R : pixeles L3 validos (ssha_filtered finito y QF==0) a <= R km
-  - n_grid_R  : pixeles de la malla del swath (validos o no) a <= R km
-para R = 10 y 50 km. Resumen por estacion: dias con dato valido, mediana de
-pixeles por pasada, y si la estacion cae geometricamente bajo el swath.
-
-Salida: results/l3_near_swath_scale/karin_coverage_all_stations.csv
-"""
+For each station and CalVal pass (1, 3, 14, 16): number of valid pixels and of
+swath grid pixels (valid or not) within R = 10 and 50 km. Station summary: days
+with valid data, median pixels per pass, and whether the station lies under the
+swath."""
 import os
 from pathlib import Path
 import numpy as np

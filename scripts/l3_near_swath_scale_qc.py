@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""L3 SWOT KaRIn vs MIOST-K vs DUACS-MY vs tide gauges -- CalVal, near-swath panel,
-radius sweep 10-100 km -- version con el L3 POR DEFECTO:
+"""L3 SWOT KaRIn vs MIOST-K vs MY vs tide gauges, CalVal, near-swath panel,
+radius sweep 10-100 km, with the default L3 product:
 
-  - variable `ssha_filtered` (calibrada, editada y con reduccion de ruido U-Net),
-  - enmascarando todo pixel con quality_flag != 0 (solo "good").
+- variable ssha_filtered (calibrated, edited, noise reduced),
+- all pixels with quality_flag != 0 masked (only "good" pixels kept).
 
-Sustituye a la extraccion L3 de l3_near_swath_scale.py (que usaba `ssha_unedited`
-y solo excluia los flags 100-102). TG+DAC, MIOST-K y DUACS-MY se reutilizan de
-las caches de ese script (no dependen del L3). Misma cadena de procesado:
-mediana espacial por pasada dentro de R, merge de fechas comunes, 3-sigma
-conjunto, recentrado, LOESS 15 d (low-pass) y residuo high-pass.
+Tide gauge + DAC, MIOST-K and MY series are reused from the caches of
+l3_near_swath_scale.py. Processing chain: spatial median per pass within R, merge
+on common dates, joint 3-sigma filter, re-centring, LOESS 15 d (low-pass) and
+high-pass residual.
 
-Salidas en results/l3_near_swath_scale/ con sufijo _qc:
+Output (results/l3_near_swath_scale/, suffix _qc):
   l3_cache_qc.pkl, per_station_radius_3products_qc{,_raw,_hp}.csv,
   summary_by_radius_3products_qc{,_raw,_hp}.csv, l3_pixel_counts_qc.csv
 """
@@ -39,7 +38,7 @@ def hav(lon1, lat1, lon2, lat2):
 
 def extract_l3(st):
     files = sorted((ART / "data/raw/swot_l3_expert").glob("SWOT_L3_LR_SSH_Expert_*.nc"))
-    print(f"[L3] {len(files)} ficheros; ssha_filtered + quality_flag == 0")
+    print(f"[L3] {len(files)} files; ssha_filtered + quality_flag == 0")
     rows = {s: [] for s in st.station}
     npix = []
     for i, f in enumerate(files):
@@ -86,7 +85,17 @@ def extract_l3(st):
 
 
 def prep(df, cols, mode):
-    """mode: 'lp' (LOESS), 'raw' (sin filtro temporal), 'hp' (serie - LOESS)."""
+    """L3 KaRIn vs tide gauge, radius sweep 10-100 km, near-swath stations of the
+fixed panel (CalVal), with the default L3 product:
+
+- variable ssha_filtered (calibrated, edited, noise reduced),
+- all pixels with quality_flag != 0 masked (only "good" pixels kept).
+
+Tide gauge + DAC, MIOST-K and MY series are reused from the caches of
+l3_near_swath_scale.py. Same processing chain: spatial median per pass within R,
+merge on common dates, 3-sigma filter, re-centring, LOESS.
+
+Output: results/l3_near_swath_scale/*_qc*.csv"""
     d = df.dropna(subset=cols).copy()
     if len(d) < 8:
         return None
@@ -127,7 +136,7 @@ def metrics(st, l3, tg, l4, du, mode):
             rm = lambda x: float(np.sqrt(np.mean((g - x) ** 2)))
             cc = lambda x: float(np.corrcoef(g, x)[0, 1])
             r3, r4, rd = rm(a), rm(b), rm(c)
-            # tope de RMSD del articulo; se descartan tambien series degeneradas (RMSD nulo)
+            # RMSD cap used in the paper; degenerate series (zero RMSD) are also discarded
             if max(r3, r4, rd) > RMSD_CAP or min(r3, r4, rd) == 0:
                 continue
             rec.append(dict(station=sid, radius=r, n=len(d), rmsd_l3=r3, rmsd_l4=r4, rmsd_duacs=rd,

@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
-"""fig07c_corr_combined_absolute_and_diff_maps_extended: analoga a
-fig07b (RMSD) pero para la correlacion con el mareografo (MY, MIOST-K, y su
-diferencia). Misma estetica exacta que make_fig07b_restyled.py
-(results/advanced_analysis/plot_combined_rmsd_maps.py): gridspec de 5
-columnas, colorbars flotantes, titulos sin negrita, caja de stats arriba a
-la izquierda, FS=16.
+"""Fig. S1: correlation with the tide gauges for MY, MIOST-K and their difference
+(same layout as make_fig07b_restyled.py).
 
-Convencion de signo: delta_corr = corr_miost - corr_my (positivo = MIOST-K
-mejor, mayor correlacion), igual que en fig07b donde delta_rmsd = rmsd_my -
-rmsd_miost es positivo cuando MIOST-K mejora. Con esto el mismo cmap
-seismic_r y la misma leyenda "(+) = MIOST-K better" mantienen el mismo
-significado de color (azul = MIOST-K mejor) en ambas figuras.
-"""
+The difference is MIOST-K minus MY, positive when MIOST-K correlates better,
+consistent with delta_rmsd = rmsd_my - rmsd_miost in make_fig07b_restyled.py
+(same colour map and "(+) = MIOST-K better" legend)."""
 import os
 import numpy as np
 import pandas as pd
@@ -30,7 +23,7 @@ BASE = Path(os.environ.get("KARIN_PROJECT_DIR", "data") + "/PIPELINE_FINAL_LIMPI
 OUT = Path(str(Path(__file__).resolve().parent.parent) + "/"
            "figures/fig07c_corr_combined_absolute_and_diff_maps_extended")
 
-RMSD_OUTLIER_CAP = 50.0  # mismo filtro de outliers que fig07b (por RMSD, no por corr)
+RMSD_OUTLIER_CAP = 50.0  # same outlier filter as fig07b (on RMSD, not on corr)
 LAT_MIN, LAT_MAX = 32, 68
 LON_MIN, LON_MAX = -15.0, 42.0
 EXTENT = [LON_MIN, LON_MAX, LAT_MIN, LAT_MAX]
@@ -92,11 +85,11 @@ def _add_floating_cbar(fig, sc, ax, label, extend="both"):
 
 datasets = [(load(ph), ph) for ph in PHASES]
 
-# La mayoria de estaciones caen entre 0.7 y 1.0 (mediana 0.87, P90 0.98); un
-# vmin bajo (percentil 2 ~ -0.35) satura todo ese rango a verde oscuro. Se
-# recorta a vmin=0.4 (~ P10 global) para que el degradado se reparta dentro
-# del rango donde vive la red; las pocas estaciones peores quedan saturadas
-# en el extremo rojo, marcadas con la flecha "extend=min" de la colorbar.
+# Most stations fall between 0.7 and 1.0 (median 0.87, P90 0.98); a low
+# vmin (2nd percentile ~ -0.35) would saturate that whole range to dark green.
+# vmin is clipped to 0.4 (~ global P10) so that the colour ramp spreads over
+# the range of the network; the few worse stations are saturated at the
+# red end, marked by the "extend=min" arrow of the colour bar.
 abs_vmin, abs_vmax = 0.4, 1.0
 delta_vmin, delta_vmax = -0.1, 0.1
 

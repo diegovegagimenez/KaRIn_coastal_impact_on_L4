@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Cifras del manuscrito v3 con la regionalizacion v2 (7 regiones: se anade la
-'Transition zone' = IHO Kattegat [incl. Sound y Belts] + IHO Baltic Sea al oeste
-de 13E; ver regions_v2.py). Todo a partir de per_station_radius_with_pixels.csv.
+"""Manuscript statistics with the seven-region classification (regions_v2.py).
 
-Imprime: Tabla 2 (regional, 50 km, ambas fases, CI bootstrap), near/far a 50 km
-por region (Fig. 4 / Tabla S1), barrido near/far por region en panel fijo
-(Tabla 4 / S3), medianas regionales por radio (texto 3.4.2), test pareado de
-escala, y estadisticos de referencia de los grupos near.
-"""
+Input : per_station_radius_with_pixels.csv.
+Prints: regional table at 50 km (both phases, bootstrap CI), near/far at 50 km
+by region, near/far radius sweep by region on the fixed panel, regional medians
+by radius, paired scale tests and reference statistics of the near groups.
+Output: per_station_radius_with_pixels_v2.csv, v3_*.csv"""
 import os
 from pathlib import Path
 import numpy as np

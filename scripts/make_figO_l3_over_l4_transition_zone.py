@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""figO: como la Fig. 7 (figN) pero en la zona de transicion mar del Norte-Baltico.
-SWOT L3 KaRIn (pase 003, CalVal; ssha_filtered, quality_flag == 0) superpuesto a
-(a) DUACS-MY y (b) MIOST-K del mismo dia, con las estaciones de la zona.
+"""Fig. 9: L3 KaRIn over (a) MY and (b) MIOST-K of the same day in the transition
+zone, with the stations of the zone.
 
-Ademas calcula, para TODAS las pasadas CalVal del pase 003 sobre la zona, la
-diferencia RMS y la correlacion entre L3 y cada campo L4 (interpolado a los
-pixeles L3, medias eliminadas), para situar el dia representado respecto a la
-mediana. Salida: figures/figO_l3_over_l4_transition_zone.{png,pdf} y
-results/l3_near_swath_scale/l3_vs_l4_pass003_transition_zone.csv
-"""
+Also computes, for all CalVal overpasses of pass 003 over the zone, the RMS
+difference and correlation between L3 and each L4 field (interpolated to the L3
+pixels, means removed).
+Output: figures/figO_l3_over_l4_transition_zone.{png,pdf}"""
 import os
 import glob
 import re
@@ -119,7 +116,7 @@ def main():
                                (my, mk), ("my", "mk")):
         ax.set_extent(EXT, crs=ccrs.PlateCarree())
         lo2, la2 = np.meshgrid(g.longitude.values, g.latitude.values)
-        # se resta la mediana de cada campo en la escena para comparar estructura y no nivel medio
+        # the scene median of each field is subtracted to compare structure, not mean level
         pc = ax.pcolormesh(lo2, la2, g.values - np.nanmedian(g.values), cmap=CMAP, vmin=-vlim, vmax=vlim,
                            shading="auto", transform=ccrs.PlateCarree(), zorder=2, rasterized=True)
         ax.pcolormesh(lon, lat, s - c0, cmap=CMAP, vmin=-vlim, vmax=vlim, shading="nearest",

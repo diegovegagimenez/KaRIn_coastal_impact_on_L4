@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Boxplot PI_RMSD near/far por region (regiones v2), CalVal, todas las estaciones
-disponibles al radio dado. Uso: python make_figF_proximity_boxplot_v2.py [R_km]
-  R=50 -> figF_proximity_boxplot_v2 (Fig. 4);  R=10 -> figF_proximity_boxplot_v2_R10."""
+"""Fig. 4 / Fig. 7: PI_RMSD near/far boxplot by region, CalVal, all stations
+available at the given radius.
+Usage: python make_figF_proximity_boxplot_v2.py [R_km]
+  R=50 -> figF_proximity_boxplot_v2;  R=10 -> figF_proximity_boxplot_v2_R10."""
 import os
 import sys
 from pathlib import Path
@@ -23,7 +24,7 @@ pos = 0
 for g in GROUPS:
     gg = d if g == "All stations" else d[d.reg == g]
     a, b = gg[gg.near].pi.dropna(), gg[~gg.near].pi.dropna()
-    if len(a) < 3:      # sin estaciones near suficientes a este radio
+    if len(a) < 3:      # not enough near-swath stations at this radius
         continue
     data += [a.values, b.values]; colors += [C_NEAR, C_FAR]; positions += [pos, pos + 0.8]
     xt.append(pos + 0.4); xl.append(f"{g}\n(n={len(a)} / {len(b)})"); pos += 2.2

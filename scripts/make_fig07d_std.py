@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-"""fig07d_std_combined_absolute_and_diff_maps_extended: como fig07c pero para la
-VARIABILIDAD TEMPORAL de cada producto: desviacion estandar de la serie
-altimetrica filtrada (low-pass), R=50 km, para MY y MIOST-K, y su diferencia
-(MIOST-K - MY). No confundir con std_* de los CSV del pipeline, que es la
-desviacion estandar de la DIFERENCIA altimetria - mareografo (~RMSD).
-Entrada: temporal_std_products_R50.csv (series guardadas a 50 km) y
-per_station_radius_with_pixels_v2.csv (coordenadas y filtro de estaciones).
-La diferencia usa un mapa de color distinto (PuOr) porque mas variabilidad no
-equivale a mejor o peor.
-"""
+"""Fig. S2: temporal variability of each product: standard deviation of the
+low-pass filtered altimetric series, R = 50 km, for MY and MIOST-K and their
+difference (MIOST-K - MY). The std_* columns of the pipeline CSVs are the
+standard deviation of the difference (altimetry - tide gauge), i.e. the RMSD.
+
+Input : temporal_std_products_R50.csv and per_station_radius_with_pixels_v2.csv.
+The difference uses a different colour map (PuOr) because larger variability is
+not by itself better or worse."""
 import os
 import numpy as np
 import pandas as pd
@@ -25,7 +23,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent / "figures" / "fig07d_std_combined_absolute_and_diff_maps_extended"
 
-RMSD_OUTLIER_CAP = 50.0  # mismo filtro de outliers que fig07b (por RMSD, no por corr)
+RMSD_OUTLIER_CAP = 50.0  # same outlier filter as fig07b (on RMSD, not on corr)
 LAT_MIN, LAT_MAX = 32, 68
 LON_MIN, LON_MAX = -15.0, 42.0
 EXTENT = [LON_MIN, LON_MAX, LAT_MIN, LAT_MAX]
@@ -46,7 +44,7 @@ _REF = _REF[_REF.radius == 50][["station", "phase", "latitude", "longitude"]]
 
 
 def load(phase):
-    # mismas estaciones que el resto del articulo (filtro de RMSD ya aplicado en _REF)
+    # same stations as the rest of the paper (RMSD filter already applied in _REF)
     return _REF[_REF.phase == phase].merge(_STD[_STD.phase == phase], on=["station", "phase"]).reset_index(drop=True)
 
 
@@ -90,11 +88,11 @@ def _add_floating_cbar(fig, sc, ax, label, extend="both"):
 
 datasets = [(load(ph), ph) for ph in PHASES]
 
-# La mayoria de estaciones caen entre 0.7 y 1.0 (mediana 0.87, P90 0.98); un
-# vmin bajo (percentil 2 ~ -0.35) satura todo ese rango a verde oscuro. Se
-# recorta a vmin=0.4 (~ P10 global) para que el degradado se reparta dentro
-# del rango donde vive la red; las pocas estaciones peores quedan saturadas
-# en el extremo rojo, marcadas con la flecha "extend=min" de la colorbar.
+# Most stations fall between 0.7 and 1.0 (median 0.87, P90 0.98); a low
+# vmin (2nd percentile ~ -0.35) would saturate that whole range to dark green.
+# vmin is clipped to 0.4 (~ global P10) so that the colour ramp spreads over
+# the range of the network; the few worse stations are saturated at the
+# red end, marked by the "extend=min" arrow of the colour bar.
 abs_vmin, abs_vmax = 0.0, 14.0
 delta_vmin, delta_vmax = -1.5, 1.5
 

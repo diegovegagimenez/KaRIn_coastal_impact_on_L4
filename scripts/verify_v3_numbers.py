@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Verificacion de cifras del manuscrito v3 y numero de pixeles (celdas de la malla
-comun 0.125 deg) usados por estacion, por fase/radio/region/proximidad."""
+"""Per-station table with the number of grid cells (common 0.125 deg grid) used,
+by phase, radius, region and proximity.
+Output: per_station_radius_with_pixels.csv"""
 import os
 from pathlib import Path
 import numpy as np, pandas as pd, geopandas as gpd
@@ -25,7 +26,7 @@ gdf = gpd.read_file(os.environ.get("KARIN_IHO_SHP", os.environ.get("KARIN_PROJEC
 pts = gpd.GeoDataFrame(sta, geometry=[Point(x, y) for x, y in zip(sta.longitude, sta.latitude)], crs="EPSG:4326")
 j = gpd.sjoin_nearest(pts, gdf[["geometry", "NAME"]], how="left"); j = j[~j.index.duplicated()]
 REG = dict(zip(j.station, j.NAME.map(lambda n: C.RMAP.get(n, "Unknown"))))
-prox = pd.read_csv(BASE / "results_P2_periodo_comun_50km/advanced_analysis_v2_fixed/miost_multivariate__vs__miost_multivariate_karin/swot_proximity_by_station.csv")
+prox = pd.read_csv(BASE / "swot_proximity_by_station.csv")
 DIST = dict(zip(prox.station, prox.swot_track_distance_km))
 D["region"] = D.station.map(REG); D["near"] = D.station.map(DIST).fillna(999) <= 2
 NC = pd.read_csv(WIN / "sensitivity_per_station_radius.csv")[["station", "phase", "radius", "ncells_my", "ncells_miost"]]
@@ -42,7 +43,7 @@ for ph in ("CalVal", "Science"):
     if ph == "CalVal":
         print(x.groupby(["region", "near"]).agg(n=("station", "size"), pix=("ncells_my", "median"), med=("pi", "median")).to_string())
 x = D[D.radius == 50]; print("pooled favour", (x.dr > 0).sum(), len(x))
-# panel fijo
+# fixed panel
 for ph in ("CalVal", "Science"):
     s = None
     for r in RADII:
@@ -53,6 +54,6 @@ for ph in ("CalVal", "Science"):
     print(P.groupby("radius").agg(pix=("ncells_my", "median"), pmin=("ncells_my", "min"), pmax=("ncells_my", "max"), med=("pi", "median"), mean=("pi", "mean"), pct=("dr", lambda s: 100*(s > 0).mean())).to_string())
     if ph == "CalVal":
         print(P[P.region.isin(["North West Shelf", "Baltic Sea", "Mediterranean Sea"])].groupby(["region", "near", "radius"]).agg(n=("station", "size"), pix=("ncells_my", "median")).unstack().to_string())
-# regional todos disponibles: pixeles
+# regional, all available stations: pixels
 print("== regional pixels (all available)")
 print(D.groupby(["phase", "region", "radius"]).ncells_my.median().unstack().to_string())

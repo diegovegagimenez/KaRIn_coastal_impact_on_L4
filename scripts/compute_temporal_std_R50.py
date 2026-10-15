@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Variabilidad temporal REAL de cada producto a R = 50 km.
+"""Temporal variability of each product at R = 50 km.
 
-Desviacion estandar (cm) de la serie altimetrica filtrada (LOESS 15 d) extraida
-en cada estacion, para MY y MIOST-K, y del mareografo detidado y corregido de
-DAC. No confundir con las columnas std_* de los CSV del pipeline, que son la
-desviacion estandar de la DIFERENCIA altimetria - mareografo (equivale al RMSD).
+Standard deviation (cm) of the LOESS-filtered series (15 d) of MY, MIOST-K and
+the detided, DAC-corrected tide gauge at each station. Note that the std_*
+columns of the pipeline CSVs are the standard deviation of the difference
+(altimetry - tide gauge), i.e. the RMSD.
 
-Entrada : series diarias guardadas por P1 (time_series_optimal/{CalVal,Science}).
-Salida  : temporal_std_products_R50.csv (usado por make_fig07d_std.py).
-"""
+Input : daily series written by P1 (time_series_optimal/{CalVal,Science}).
+Output: temporal_std_products_R50.csv (used by make_fig07d_std.py)."""
 import glob
 import os
 from pathlib import Path

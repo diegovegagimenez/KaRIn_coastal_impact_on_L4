@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-"""Barrido de escala 10-100 km + near/far SWATH,
-EXCLUSIVAMENTE sobre la ventana extendida (registro DT completo) y
-EXCLUSIVAMENTE sobre la comparacion MY -> MIOST-K.
+"""Radius sweep (10-100 km) and near/far-swath statistics for the extended
+delayed-time record, MY vs MIOST-K.
 
-Reproduce la logica de highlights.py (mismo cap de RMSD, mismo mapeo de region,
-mismas distancias SWOT) pero:
-  - solo window = extendida
-  - solo comparison = total (my -> miost)
-  - anade el control de PANEL FIJO (estaciones presentes a todos los radios),
-    que en V3 solo existia para la ventana comun.
-"""
+Computes PI_RMSD per station, the fixed station panel (stations available at all
+radii), near/far medians, network and regional medians.
+
+Output: final_v1_scale.json"""
 import os
 import json
 from pathlib import Path
@@ -67,12 +63,11 @@ pts = gpd.GeoDataFrame({"station": sta},
 j = gpd.sjoin_nearest(pts, gdf[["geometry", "NAME"]], how="left", distance_col="_d")
 j = j[~j.index.duplicated(keep="first")]
 REGION = dict(zip(j["station"], j["NAME"].map(lambda n: RMAP.get(n, "Unknown"))))
-prox = pd.read_csv(BASE / "results_P2_periodo_comun_50km" / "advanced_analysis_v2_fixed" /
-                   "miost_multivariate__vs__miost_multivariate_karin" / "swot_proximity_by_station.csv")
+prox = pd.read_csv(BASE / "swot_proximity_by_station.csv")
 DIST = dict(zip(prox.station, prox.swot_track_distance_km))
-print(f"{len(sta)} estaciones; {sum(v <= 2 for v in DIST.values())} near-SWOT (<=2 km)")
+print(f"{len(sta)} stations; {sum(v <= 2 for v in DIST.values())} near-SWOT (<=2 km)")
 
-# ---- PI por estacion --------------------------------------------------------
+# ---- PI per station ---------------------------------------------------------
 for (r, ph), d in data.items():
     with np.errstate(divide="ignore", invalid="ignore"):
         d["pi"] = 100 * (d.rmsd_my - d.rmsd_miost) / d.rmsd_my
@@ -81,7 +76,7 @@ for (r, ph), d in data.items():
     d["region"] = d.station.map(REGION)
     d["dist"] = d.station.map(DIST)
 
-# ---- panel fijo por fase: estaciones presentes a los 10 radios --------------
+# ---- fixed panel per phase: stations present at all 10 radii ----------------
 PANEL = {}
 for ph in PHASES:
     s = set(data[(RADII[0], ph)].station)
@@ -89,7 +84,7 @@ for ph in PHASES:
         s &= set(data[(r, ph)].station)
     PANEL[ph] = s
     n_near = sum(DIST.get(x, 999) <= 2 for x in s)
-    print(f"panel fijo {ph}: {len(s)} estaciones ({n_near} near, {len(s)-n_near} far)")
+    print(f"fixed panel {ph}: {len(s)} stations ({n_near} near, {len(s)-n_near} far)")
 
 res = {"nearfar": [], "network": [], "regional": [], "allsta": []}
 
@@ -98,18 +93,18 @@ for ph in PHASES:
     for r in RADII:
         d = data[(r, ph)]
         p = d[d.station.isin(P)]
-        # near/far sobre panel fijo
+        # near/far on the fixed panel
         a = p[p.dist <= 2].pi.dropna()
         b = p[p.dist > 2].pi.dropna()
         _, pv = stats.mannwhitneyu(a, b, alternative="two-sided")
         res["nearfar"].append(dict(phase=ph, radius=r, n_near=len(a), n_far=len(b),
                                    near=round(float(a.median()), 3), far=round(float(b.median()), 3),
                                    gap=round(float(a.median() - b.median()), 3), p=float(pv)))
-        # network-wide sobre panel fijo, y sobre todas las estaciones disponibles
+        # network-wide on the fixed panel and on all available stations
         res["network"].append(dict(phase=ph, radius=r,
                                    panel=round(float(p.pi.dropna().median()), 3), n_panel=len(p),
                                    allst=round(float(d.pi.dropna().median()), 3), n_all=len(d)))
-        # regional (todas las estaciones disponibles a ese radio, como en V3 tab:regional_scale)
+        # regional (all stations available at that radius)
         for g in ["Global"] + REGION_ORDER:
             gg = d if g == "Global" else d[d.region == g]
             v = gg.pi.dropna()
@@ -123,18 +118,18 @@ for ph in PHASES:
 json.dump(res, open(OUT / "final_v1_scale.json", "w"), indent=1)
 
 pd.set_option("display.width", 200)
-print("\n=== NEAR/FAR, panel fijo, ventana extendida ===")
+print("\n=== NEAR/FAR, fixed panel, extended window ===")
 print(pd.DataFrame(res["nearfar"]).to_string(index=False))
-print("\n=== NETWORK-WIDE mediana PI, panel fijo vs todas ===")
+print("\n=== NETWORK-WIDE median PI, fixed panel vs all ===")
 print(pd.DataFrame(res["network"]).to_string(index=False))
-print("\n=== REGIONAL x radio (todas las estaciones disponibles) ===")
+print("\n=== REGIONAL x radius (all available stations) ===")
 R = pd.DataFrame(res["regional"])
 for ph in PHASES:
     print(f"\n-- {ph} --")
     print(R[R.phase == ph].pivot(index="region", columns="radius", values="pi").to_string())
-print("\n=== n por region/radio (Science) ===")
+print("\n=== n per region/radius (Science) ===")
 print(R[R.phase == "Science"].pivot(index="region", columns="radius", values="n").to_string())
-print("\n=== TOP configuraciones (ventana extendida, n>=20, por PI mediano) ===")
+print("\n=== TOP configurations (extended window, n>=20, by median PI) ===")
 top = R[(R.region != "Global") & (R.n >= 20)].nlargest(10, "pi")
 print(top.to_string(index=False))
 print("\n=== TOP global ===")

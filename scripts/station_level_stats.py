@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-"""Estadisticos a nivel de estacion citados en la Seccion 3.2: estaciones con
-mayor mejora/degradacion de RMSD, solapamiento entre fases y cambio de
-correlacion. R = 50 km. dr = RMSD_MY - RMSD_MIOSTK [cm].
-Entradas: per_station_radius_with_pixels_v2.csv, station_regions_v2.csv.
-"""
+"""Station-level statistics of Sect. 3.2: stations with the largest RMSD
+reduction/degradation, overlap between phases and change in correlation."""
 import os
 from pathlib import Path
 
